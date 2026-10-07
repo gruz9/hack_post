@@ -1,0 +1,9 @@
+name = "my-board"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# 먼저 터미널에서 `npx wrangler kv namespace create POSTS` 를 실행하고
+# 출력된 id를 아래에 붙여 넣으세요.
+[[kv_namespaces]]
+binding = "POSTS"
+id = "여기에_KV_ID_붙여넣기"

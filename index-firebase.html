@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게시판</title>
+<style>
+  :root {
+    --bg: #e9efe6;
+    --paper: #fffdf7;
+    --ink: #1f2a24;
+    --muted: #6b776f;
+    --line: #cfd8cb;
+    --accent: #2f6b4f;
+    --danger: #b3382c;
+    --pin: #d9534f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17201b; --paper: #202b24; --ink: #e7eee8; --muted: #94a39a;
+      --line: #33423a; --accent: #6fbf97; --danger: #ef7d70; --pin: #ef7d70;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+
+  form {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 6px; padding: 16px; display: grid; gap: 10px;
+  }
+  label { font-size: 0.85rem; color: var(--muted); display: grid; gap: 4px; }
+  input, textarea {
+    font: inherit; color: inherit; background: transparent;
+    border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; width: 100%;
+  }
+  textarea { min-height: 96px; resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .foot { display: flex; justify-content: space-between; align-items: center; }
+  .count { font-size: 0.8rem; color: var(--muted); }
+  button {
+    font: inherit; cursor: pointer; border: 0; border-radius: 4px;
+    padding: 8px 18px; background: var(--accent); color: #fff;
+  }
+  @media (prefers-color-scheme: dark) { button { color: #10201a; } }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.ghost {
+    background: transparent; color: var(--muted); padding: 2px 8px;
+    border: 1px solid var(--line); font-size: 0.8rem;
+  }
+  button.ghost:hover { color: var(--danger); border-color: var(--danger); }
+
+  #msg { min-height: 1.4em; margin: 10px 2px 0; font-size: 0.9rem; color: var(--danger); }
+  #list { display: grid; gap: 14px; margin-top: 18px; }
+  article {
+    position: relative; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 6px; padding: 18px 16px 14px;
+  }
+  article::before {
+    content: ""; position: absolute; top: -5px; left: 16px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--pin);
+  }
+  .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .name { font-weight: 700; }
+  .time { color: var(--muted); font-size: 0.8rem; margin-left: 8px; font-weight: 400; }
+  .body { white-space: pre-wrap; word-break: break-word; margin: 0; }
+  .empty { text-align: center; color: var(--muted); padding: 32px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>게시판</h1>
+  <p class="sub">글을 남기고, 필요하면 삭제할 수 있어요.</p>
+
+  <form id="post-form">
+    <label>이름
+      <input id="name" maxlength="20" required>
+    </label>
+    <label>내용
+      <textarea id="content" maxlength="500" required></textarea>
+    </label>
+    <div class="foot">
+      <span class="count"><span id="len">0</span> / 500</span>
+      <button type="submit" id="submit">글 올리기</button>
+    </div>
+  </form>
+
+  <div id="msg" role="status" aria-live="polite"></div>
+  <section id="list" aria-label="게시글 목록"></section>
+</main>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, deleteDoc, doc,
+    onSnapshot, query, orderBy, limit, serverTimestamp,
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDsBCY8r1WAXz-Kk4DBPYzwN7vL4hogAvs",
+    authDomain: "post-19e9d.firebaseapp.com",
+    projectId: "post-19e9d",
+    storageBucket: "post-19e9d.firebasestorage.app",
+    messagingSenderId: "81982207822",
+    appId: "1:81982207822:web:dae4cff1da3b6bab4c101f",
+    measurementId: "G-BY6MCQK5FB",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const posts = collection(db, "posts");
+
+  const $ = (id) => document.getElementById(id);
+  const listEl = $("list"), msgEl = $("msg");
+  const say = (t) => (msgEl.textContent = t);
+
+  function timeAgo(date) {
+    if (!date) return "방금 전";
+    const s = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (s < 60) return "방금 전";
+    if (s < 3600) return Math.floor(s / 60) + "분 전";
+    if (s < 86400) return Math.floor(s / 3600) + "시간 전";
+    return date.toLocaleDateString("ko-KR");
+  }
+
+  function card(id, data) {
+    const el = document.createElement("article");
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const who = document.createElement("div");
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = data.name;
+    const time = document.createElement("span");
+    time.className = "time";
+    time.textContent = timeAgo(data.createdAt?.toDate());
+    who.append(name, time);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "ghost";
+    del.textContent = "삭제";
+    del.addEventListener("click", async () => {
+      if (!confirm("이 글을 삭제할까요?")) return;
+      try {
+        await deleteDoc(doc(db, "posts", id));
+      } catch (err) {
+        say("삭제하지 못했어요: " + err.message);
+      }
+    });
+    meta.append(who, del);
+
+    const body = document.createElement("p");
+    body.className = "body";
+    body.textContent = data.content;
+
+    el.append(meta, body);
+    return el;
+  }
+
+  // 실시간으로 목록 갱신 (글이 올라오거나 지워지면 자동 반영)
+  const q = query(posts, orderBy("createdAt", "desc"), limit(50));
+  onSnapshot(
+    q,
+    (snap) => {
+      listEl.replaceChildren();
+      if (snap.empty) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "아직 글이 없어요. 첫 글을 남겨 보세요.";
+        listEl.append(p);
+        return;
+      }
+      snap.forEach((d) => listEl.append(card(d.id, d.data())));
+    },
+    (err) => say("목록을 불러오지 못했어요: " + err.message)
+  );
+
+  $("content").addEventListener("input", (e) => ($("len").textContent = e.target.value.length));
+
+  $("post-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("submit");
+    btn.disabled = true;
+    try {
+      await addDoc(posts, {
+        name: $("name").value.trim(),
+        content: $("content").value.trim(),
+        createdAt: serverTimestamp(),
+      });
+      $("content").value = "";
+      $("len").textContent = "0";
+      say("");
+    } catch (err) {
+      say("글을 올리지 못했어요: " + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
