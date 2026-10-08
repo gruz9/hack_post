@@ -5,20 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>게시판</title>
 <style>
+  /* 화이트 모드 */
   :root {
     --bg: #e9efe6;
     --paper: #fffdf7;
-    --ink: #004ec2;
-    --muted: #24f169;
-    --line: #b7fd99;
+    --ink: #1f2a24;
+    --muted: #6b776f;
+    --line: #cfd8cb;
     --accent: #2f6b4f;
     --danger: #b3382c;
-    --pin: #1b1110;
+    --pin: #d9534f;
   }
+  /* 다크 모드 */
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #17201b; --paper: #202b24; --ink: #e7eee8; --muted: #94a39a;
-      --line: #33423a; --accent: #6fbf97; --danger: #ef7d70; --pin: #ef7d70;
+      --bg: #17201b;
+      --paper: #202b24; 
+      --ink: #e7eee8; 
+      --muted: #94a39a;
+      --line: #33423a; 
+      --accent: #6fbf97; 
+      --danger: #ef7d70; 
+      --pin: #ef7d70;
     }
   }
   * { box-sizing: border-box; }
