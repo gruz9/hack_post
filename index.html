@@ -82,13 +82,13 @@
 
   <form id="post-form">
     <label>이름
-      <input id="name" maxlength="20" required>
+      <input id="name" required>
     </label>
     <label>내용
-      <textarea id="content" maxlength="500" required></textarea>
+      <textarea id="content" required></textarea>
     </label>
     <div class="foot">
-      <span class="count"><span id="len">0</span> / 500</span>
+      <span class="count"><span id="len">0</span>자</span>
       <button type="submit" id="submit">글 올리기</button>
     </div>
   </form>
@@ -139,7 +139,7 @@
     const who = document.createElement("div");
     const name = document.createElement("span");
     name.className = "name";
-    name.textContent = data.name;
+    name.innerHTML = data.name;
     const time = document.createElement("span");
     time.className = "time";
     time.textContent = timeAgo(data.createdAt?.toDate());
@@ -161,7 +161,7 @@
 
     const body = document.createElement("p");
     body.className = "body";
-    body.textContent = data.content;
+    body.innerHTML = data.content;
 
     el.append(meta, body);
     return el;
